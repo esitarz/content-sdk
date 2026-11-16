@@ -30,6 +30,17 @@ describe('RouteHandlerTokenClient', () => {
     });
   });
 
+  it('should time out with a network error', async () => {
+    const fetchStub = sinon.stub().returns(new Promise(() => undefined));
+    const client = new RouteHandlerTokenClient({ fetch: fetchStub, timeout: 20 });
+
+    const error = await client.getAnonymousToken().catch((e) => e);
+
+    expect(error).to.be.instanceOf(CommerceError);
+    expect(error.source).to.equal('network');
+    expect(error.message).to.include('timed out');
+  });
+
   it('should ask for a forced refresh and use a custom endpoint', async () => {
     const fetchStub = sinon.stub().resolves(jsonResponse(200, { ...valid, userType: 'registered' }));
     const client = new RouteHandlerTokenClient({ endpoint: '/custom', fetch: fetchStub });

@@ -2,6 +2,7 @@ import { CONTEXT_ID_HEADER } from './constants';
 import { CommerceError } from './errors';
 import { buildProxyUrl, commerceFetch } from './http';
 import { CommerceRequestOptions, MeUser, ShopperSession } from './models';
+import { createProductsApi, ProductsApi } from './products/products-api';
 import { ShopperSessionManager } from './session/shopper-session-manager';
 import { EdgeTokenClient } from './token/edge-token-client';
 import { createMemoryTokenStore } from './token-store/memory-token-store';
@@ -77,6 +78,11 @@ export class OrderCloudService {
   };
 
   /**
+   * Buyer product operations. Prices and visibility depend on the current shopper.
+   */
+  readonly products: ProductsApi;
+
+  /**
    * @param {OrderCloudServiceConfig} config service configuration
    */
   constructor(private config: OrderCloudServiceConfig) {
@@ -104,12 +110,15 @@ export class OrderCloudService {
     this.me = {
       get: (options) => this.request<MeUser>('/v1/me', { ...options, method: 'GET' }),
     };
+
+    this.products = createProductsApi((path, init) => this.request(path, init));
   }
 
   /**
    * Sends an authorized request to an allowlisted OrderCloud buyer endpoint not yet wrapped by the SDK.
    * On HTTP 401 the session is renewed and the request retried once.
-   * This escape hatch may change as typed product and cart APIs are added.
+   * Prefer typed APIs such as `products` where available. This escape hatch may change as typed
+   * cart APIs are added.
    * @param {OrderCloudApiPath} path OrderCloud path, e.g. `/v1/me/products`
    * @param {RequestInit} [init] request init; JSON bodies must be pre-serialized strings
    * @returns {Promise<T>} response data

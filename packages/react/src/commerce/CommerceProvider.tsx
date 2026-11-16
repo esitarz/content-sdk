@@ -59,6 +59,12 @@ export interface CommerceProviderProps {
    * @default false
    */
   eager?: boolean;
+  /**
+   * Timeout in milliseconds for every commerce request made by the provider and its hooks
+   * (OrderCloud and token requests). A timed-out request fails with a `CommerceError` whose
+   * `source` is `network`. No timeout when omitted.
+   */
+  timeout?: number;
 }
 
 /**
@@ -134,7 +140,34 @@ export interface CommerceInternalContextValue {
   sessionVersion: number;
   shopper: ShopperState;
   loadShopper(force?: boolean): Promise<void>;
+  /**
+   * Current identity version, read synchronously (updated before `sessionVersion` re-renders).
+   */
+  getSessionVersion(): number;
+  /**
+   * Shares one in-flight request per key and shopper identity across consumers. Each caller can
+   * abort independently; the underlying request is aborted when every caller has aborted.
+   * Settled requests are not cached beyond the current tick.
+   */
+  dedupe<T>(
+    key: string,
+    factory: (signal: AbortSignal) => Promise<T>,
+    options?: { signal?: AbortSignal; force?: boolean }
+  ): Promise<T>;
 }
+
+interface InFlightRequest {
+  promise: Promise<unknown>;
+  controller: AbortController;
+  refs: number;
+  settled: boolean;
+}
+
+const abortError = () => {
+  const error = new Error('The operation was aborted.');
+  error.name = 'AbortError';
+  return error;
+};
 
 const CommerceContext = React.createContext<CommerceContextValue | undefined>(undefined);
 const CommerceInternalContext = React.createContext<CommerceInternalContextValue | undefined>(
@@ -161,7 +194,8 @@ const createSetup = (
   contextId: string,
   edgeUrl: string | undefined,
   tokens: CommerceTokenOptions,
-  isEditing: boolean
+  isEditing: boolean,
+  timeout: number | undefined
 ): CommerceSetup => {
   let tokenStore: CommerceTokenStore;
   let tokenClient: CommerceTokenClient;
@@ -169,24 +203,24 @@ const createSetup = (
   if (isEditing) {
     // avoid third-party cookie issues in the Pages iframe and never touch the visitor's cookies
     tokenStore = createMemoryTokenStore();
-    tokenClient = new EdgeTokenClient({ contextId, edgeUrl });
+    tokenClient = new EdgeTokenClient({ contextId, edgeUrl, timeout });
   } else if (tokens.mode === 'route-handler') {
     tokenStore = createBrowserCookieTokenStore({
       refreshTokenStorage: 'none',
       cookies: tokens.cookies,
     });
-    tokenClient = new RouteHandlerTokenClient({ endpoint: tokens.endpoint });
+    tokenClient = new RouteHandlerTokenClient({ endpoint: tokens.endpoint, timeout });
   } else {
     tokenStore = createBrowserCookieTokenStore({
       refreshTokenStorage: tokens.refreshTokenStorage,
       cookies: tokens.cookies,
     });
-    tokenClient = new EdgeTokenClient({ contextId, edgeUrl });
+    tokenClient = new EdgeTokenClient({ contextId, edgeUrl, timeout });
   }
 
   const sessionManager = new ShopperSessionManager({ tokenClient, tokenStore });
   return {
-    service: new OrderCloudService({ contextId, edgeUrl, sessionManager }),
+    service: new OrderCloudService({ contextId, edgeUrl, sessionManager, timeout }),
     tokenStore,
   };
 };
@@ -200,7 +234,7 @@ const createSetup = (
  * @public
  */
 export const CommerceProvider = (props: CommerceProviderProps): React.ReactElement => {
-  const { children, tokens, eager = false } = props;
+  const { children, tokens, eager = false, timeout } = props;
   const { api, page } = useSitecore();
   const contextId = api?.edge?.clientContextId;
   const edgeUrl = api?.edge?.edgeUrl;
@@ -213,8 +247,11 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
   const tokensKey = JSON.stringify(tokens ?? null);
 
   const setup = useMemo<CommerceSetup | null>(
-    () => (contextId ? createSetup(contextId, edgeUrl, JSON.parse(tokensKey), isEditing) : null),
-    [contextId, edgeUrl, tokensKey, isEditing]
+    () =>
+      contextId
+        ? createSetup(contextId, edgeUrl, JSON.parse(tokensKey), isEditing, timeout)
+        : null,
+    [contextId, edgeUrl, tokensKey, isEditing, timeout]
   );
 
   const configError = useMemo(
@@ -239,6 +276,7 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
   const versionRef = useRef(0);
   const shopperRef = useRef<{ version: number; controller: AbortController | null } | null>(null);
   const setupRef = useRef(setup);
+  const inFlightRef = useRef(new Map<string, InFlightRequest>());
 
   useEffect(() => {
     // reset only when the setup changes after mount; child effects may already have updated state
@@ -251,6 +289,7 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
       setStatus(configError ? 'error' : 'idle');
       shopperRef.current?.controller?.abort();
       shopperRef.current = null;
+      inFlightRef.current.clear();
     }
 
     if (!setup) return undefined;
@@ -261,6 +300,7 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
       setSession(event.session);
       if (event.reason !== 'refreshed') {
         versionRef.current += 1;
+        inFlightRef.current.clear();
         setSessionVersion(versionRef.current);
         setLastSessionChange(event);
       }
@@ -362,6 +402,79 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
     if (eager && setup) ensureSession().catch(() => undefined);
   }, [eager, setup, ensureSession]);
 
+  const getSessionVersion = useCallback(() => versionRef.current, []);
+
+  const dedupe = useCallback(
+    <T,>(
+      key: string,
+      factory: (signal: AbortSignal) => Promise<T>,
+      options: { signal?: AbortSignal; force?: boolean } = {}
+    ): Promise<T> => {
+      const { signal, force } = options;
+      if (signal?.aborted) return Promise.reject(abortError());
+
+      const map = inFlightRef.current;
+      const fullKey = `${versionRef.current}|${key}`;
+      let entry = force ? undefined : map.get(fullKey);
+
+      if (!entry) {
+        const controller = new AbortController();
+        const created: InFlightRequest = {
+          controller,
+          refs: 0,
+          settled: false,
+          promise: Promise.resolve(),
+        };
+        created.promise = factory(controller.signal).then(
+          (value) => {
+            created.settled = true;
+            // keep the entry for one tick so consumers starting in the same commit still share it
+            setTimeout(() => {
+              if (map.get(fullKey) === created) map.delete(fullKey);
+            }, 0);
+            return value;
+          },
+          (err) => {
+            created.settled = true;
+            // drop failures immediately so a retry sends a new request
+            if (map.get(fullKey) === created) map.delete(fullKey);
+            throw err;
+          }
+        );
+        // avoid unhandled rejections when every consumer has aborted
+        created.promise.catch(() => undefined);
+        map.set(fullKey, created);
+        entry = created;
+      }
+
+      const shared = entry;
+      shared.refs += 1;
+
+      return new Promise<T>((resolve, reject) => {
+        const onAbort = () => {
+          shared.refs -= 1;
+          if (shared.refs <= 0 && !shared.settled) {
+            shared.controller.abort();
+            if (map.get(fullKey) === shared) map.delete(fullKey);
+          }
+          reject(abortError());
+        };
+        signal?.addEventListener('abort', onAbort, { once: true });
+        shared.promise.then(
+          (value) => {
+            signal?.removeEventListener('abort', onAbort);
+            if (!signal?.aborted) resolve(value as T);
+          },
+          (err) => {
+            signal?.removeEventListener('abort', onAbort);
+            if (!signal?.aborted) reject(err);
+          }
+        );
+      });
+    },
+    []
+  );
+
   const userType = session?.userType ?? null;
 
   const value = useMemo<CommerceContextValue>(
@@ -391,8 +504,8 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
   );
 
   const internal = useMemo<CommerceInternalContextValue>(
-    () => ({ sessionVersion, shopper, loadShopper }),
-    [sessionVersion, shopper, loadShopper]
+    () => ({ sessionVersion, shopper, loadShopper, getSessionVersion, dedupe }),
+    [sessionVersion, shopper, loadShopper, getSessionVersion, dedupe]
   );
 
   return (

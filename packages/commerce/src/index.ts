@@ -34,3 +34,36 @@ export {
 } from './models';
 export { DEFAULT_TOKEN_KEY } from './constants';
 export { debug } from './debug';
+export {
+  BuyerProduct,
+  Inventory,
+  LineItemSpec,
+  ListMeta,
+  ListPage,
+  PriceBreak,
+  PriceMarkupType,
+  PriceSchedule,
+  Spec,
+  SpecOption,
+  Variant,
+  VariantSpec,
+} from './ordercloud-types';
+export { ListOptions, ListProductsOptions, ListFilterValue } from './query';
+export { ProductsApi, ListAllPagesOptions } from './products/products-api';
+export { isProductNotFoundError } from './products/product-errors';
+export {
+  SpecSelection,
+  SpecSelections,
+  SpecSelectionIssue,
+  SpecSelectionIssueCode,
+  OptionAvailability,
+  ProductLineItemDraft,
+  hasVariantSpecs,
+  getDefaultSelections,
+  getInitialSelections,
+  resolveVariant,
+  getOptionAvailability,
+  validateSelections,
+  toLineItemSpecs,
+} from './products/product-options';
+export { estimateUnitPrice, UnitPriceEstimate } from './products/pricing';

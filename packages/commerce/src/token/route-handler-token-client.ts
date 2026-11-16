@@ -15,6 +15,10 @@ export interface RouteHandlerTokenClientConfig {
    */
   endpoint?: string;
   /**
+   * Request timeout in milliseconds.
+   */
+  timeout?: number;
+  /**
    * Fetch override.
    */
   fetch?: typeof fetch;
@@ -78,7 +82,7 @@ export class RouteHandlerTokenClient implements CommerceTokenClient {
     await commerceFetch<unknown>(
       this.endpoint,
       { ...options, method: 'DELETE', credentials: 'same-origin' },
-      { fetch: this.config.fetch }
+      { timeout: this.config.timeout, fetch: this.config.fetch }
     );
   }
 
@@ -101,7 +105,7 @@ export class RouteHandlerTokenClient implements CommerceTokenClient {
           headers,
           body: JSON.stringify(body),
         },
-        { fetch: this.config.fetch }
+        { timeout: this.config.timeout, fetch: this.config.fetch }
       );
     } catch (error) {
       if (error instanceof CommerceError && error.status !== undefined) {

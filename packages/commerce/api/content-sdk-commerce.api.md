@@ -13,6 +13,36 @@ export interface BrowserCookieTokenStoreOptions {
 }
 
 // @public
+export interface BuyerProduct<TXp = Record<string, unknown>> {
+    // (undocumented)
+    Active?: boolean;
+    // (undocumented)
+    DefaultSupplierID?: string | null;
+    // (undocumented)
+    Description?: string | null;
+    // (undocumented)
+    ID: string;
+    // (undocumented)
+    Inventory?: Inventory | null;
+    // (undocumented)
+    IsParent?: boolean;
+    // (undocumented)
+    Name: string;
+    // (undocumented)
+    ParentID?: string | null;
+    // (undocumented)
+    PriceSchedule?: PriceSchedule | null;
+    // (undocumented)
+    QuantityMultiplier?: number;
+    // (undocumented)
+    SpecCount?: number;
+    // (undocumented)
+    VariantCount?: number;
+    // (undocumented)
+    xp?: TXp;
+}
+
+// @public
 export interface CommerceCookieOptions {
     domain?: string;
     path?: string;
@@ -104,7 +134,116 @@ export interface EdgeTokenClientConfig {
 }
 
 // @public
+export function estimateUnitPrice(product: BuyerProduct, options?: {
+    quantity?: number;
+    specs?: Spec[];
+    selections?: SpecSelections;
+}): UnitPriceEstimate | null;
+
+// @public
+export function getDefaultSelections(specs: Spec[]): SpecSelections;
+
+// @public
+export function getInitialSelections(specs: Spec[], variants: Variant[], initial?: SpecSelections): SpecSelections;
+
+// @public
+export function getOptionAvailability(specs: Spec[], selections: SpecSelections, variants: Variant[]): OptionAvailability;
+
+// @public
+export function hasVariantSpecs(specs: Spec[]): boolean;
+
+// @public
+export interface Inventory {
+    // (undocumented)
+    Enabled?: boolean;
+    // (undocumented)
+    NotificationPoint?: number | null;
+    // (undocumented)
+    OrderCanExceed?: boolean;
+    // (undocumented)
+    QuantityAvailable?: number | null;
+    // (undocumented)
+    VariantLevelTracking?: boolean;
+}
+
+// @public
+export function isProductNotFoundError(error: unknown): boolean;
+
+// @public
 export function isSessionUsable(session: ShopperSession | null | undefined, options?: SessionUsableOptions): session is ShopperSession;
+
+// @public
+export interface LineItemSpec {
+    // (undocumented)
+    OptionID?: string;
+    // (undocumented)
+    SpecID: string;
+    // (undocumented)
+    Value?: string;
+}
+
+// @public
+export interface ListAllPagesOptions extends ListOptions {
+    all?: boolean;
+    maxPages?: number;
+}
+
+// @public
+export type ListFilterValue = string | number | boolean | Array<string | number> | undefined;
+
+// @public
+export interface ListMeta {
+    // (undocumented)
+    Facets?: Array<{
+        Name: string;
+        XpPath: string;
+        Values: Array<{
+            Value: string;
+            Count: number;
+        }>;
+    }>;
+    // (undocumented)
+    ItemRange?: number[];
+    // (undocumented)
+    NextPageKey?: string;
+    // (undocumented)
+    Page?: number;
+    // (undocumented)
+    PageSize?: number;
+    // (undocumented)
+    TotalCount?: number;
+    // (undocumented)
+    TotalPages?: number;
+}
+
+// @public
+export interface ListOptions {
+    filters?: Record<string, ListFilterValue>;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    searchOn?: string[];
+    searchType?: 'AnyTerm' | 'AllTermsAnyField' | 'AllTermsSameField' | 'ExactPhrase' | 'ExactPhrasePrefix';
+    sortBy?: string[];
+}
+
+// @public
+export interface ListPage<T> {
+    // (undocumented)
+    Items: T[];
+    // (undocumented)
+    Meta: ListMeta;
+}
+
+// @public
+export interface ListProductsOptions extends ListOptions {
+    // (undocumented)
+    catalogID?: string;
+    // (undocumented)
+    categoryID?: string;
+    // (undocumented)
+    depth?: string;
+}
 
 // @public
 export interface MeUser {
@@ -129,6 +268,9 @@ export interface MeUser {
 }
 
 // @public
+export type OptionAvailability = Record<string, Record<string, boolean>>;
+
+// @public
 export interface OrderCloudApiError {
     // (undocumented)
     Data?: unknown;
@@ -151,6 +293,7 @@ export class OrderCloudService {
     readonly me: {
         get(options?: CommerceRequestOptions): Promise<MeUser>;
     };
+    readonly products: ProductsApi;
     request<T>(path: OrderCloudApiPath, init?: RequestInit): Promise<T>;
     readonly sessionManager: ShopperSessionManager;
 }
@@ -165,6 +308,61 @@ export interface OrderCloudServiceConfig {
 }
 
 // @public
+export interface PriceBreak {
+    // (undocumented)
+    Price: number;
+    // (undocumented)
+    Quantity: number;
+    // (undocumented)
+    SalePrice?: number | null;
+}
+
+// @public
+export type PriceMarkupType = 'NoMarkup' | 'AmountPerQuantity' | 'AmountTotal' | 'Percentage';
+
+// @public
+export interface PriceSchedule {
+    // (undocumented)
+    Currency?: string | null;
+    // (undocumented)
+    ID?: string;
+    // (undocumented)
+    IsOnSale?: boolean;
+    // (undocumented)
+    MaxQuantity?: number | null;
+    // (undocumented)
+    MinQuantity?: number;
+    // (undocumented)
+    Name?: string;
+    // (undocumented)
+    PriceBreaks?: PriceBreak[];
+    // (undocumented)
+    RestrictedQuantity?: boolean;
+    // (undocumented)
+    xp?: unknown;
+}
+
+// @public
+export interface ProductLineItemDraft {
+    // (undocumented)
+    ProductID: string;
+    // (undocumented)
+    Specs: LineItemSpec[];
+    VariantID?: string;
+}
+
+// @public
+export interface ProductsApi {
+    get<TXp = Record<string, unknown>>(productId: string, options?: CommerceRequestOptions): Promise<BuyerProduct<TXp>>;
+    list<TXp = Record<string, unknown>>(params?: ListProductsOptions, options?: CommerceRequestOptions): Promise<ListPage<BuyerProduct<TXp>>>;
+    listSpecs(productId: string, params?: ListAllPagesOptions, options?: CommerceRequestOptions): Promise<ListPage<Spec>>;
+    listVariants(productId: string, params?: ListAllPagesOptions, options?: CommerceRequestOptions): Promise<ListPage<Variant>>;
+}
+
+// @public
+export function resolveVariant(specs: Spec[], selections: SpecSelections, variants: Variant[]): Variant | undefined;
+
+// @public
 export class RouteHandlerTokenClient implements CommerceTokenClient {
     constructor(config?: RouteHandlerTokenClientConfig);
     clear(options?: CommerceRequestOptions): Promise<void>;
@@ -177,6 +375,7 @@ export class RouteHandlerTokenClient implements CommerceTokenClient {
 export interface RouteHandlerTokenClientConfig {
     endpoint?: string;
     fetch?: typeof fetch;
+    timeout?: number;
 }
 
 // @public
@@ -225,6 +424,71 @@ export interface ShopperSessionManagerConfig {
 export type ShopperUserType = 'anonymous' | 'registered';
 
 // @public
+export interface Spec<TXp = Record<string, unknown>, TOptionXp = Record<string, unknown>> {
+    // (undocumented)
+    AllowOpenText?: boolean;
+    // (undocumented)
+    DefaultOptionID?: string | null;
+    // (undocumented)
+    DefaultValue?: string | null;
+    // (undocumented)
+    DefinesVariant?: boolean;
+    // (undocumented)
+    ID: string;
+    // (undocumented)
+    ListOrder?: number;
+    // (undocumented)
+    Name: string;
+    // (undocumented)
+    OptionCount?: number;
+    // (undocumented)
+    Options?: Array<SpecOption<TOptionXp>>;
+    // (undocumented)
+    Required?: boolean;
+    // (undocumented)
+    xp?: TXp;
+}
+
+// @public
+export interface SpecOption<TXp = Record<string, unknown>> {
+    // (undocumented)
+    ID: string;
+    // (undocumented)
+    IsOpenText?: boolean;
+    // (undocumented)
+    ListOrder?: number;
+    // (undocumented)
+    PriceMarkup?: number | null;
+    // (undocumented)
+    PriceMarkupType?: PriceMarkupType;
+    // (undocumented)
+    Value: string;
+    // (undocumented)
+    xp?: TXp;
+}
+
+// @public
+export interface SpecSelection {
+    optionId?: string;
+    value?: string;
+}
+
+// @public
+export interface SpecSelectionIssue<TCode extends string = SpecSelectionIssueCode> {
+    // (undocumented)
+    code: TCode;
+    // (undocumented)
+    params?: Record<string, string | number>;
+    specId: string;
+}
+
+// @public
+export type SpecSelectionIssueCode = 'required' | 'value-required' | 'invalid-option' | 'open-text-not-allowed' | 'spec-unavailable' | 'variant-unavailable';
+
+// @public
+export type SpecSelections = Record<string, SpecSelection>;
+
+// @public
 export interface TokenClientResult {
     persisted: boolean;
     session: ShopperSession;
@@ -232,6 +496,56 @@ export interface TokenClientResult {
 
 // @public
 export type TokenKey = string;
+
+// @public
+export function toLineItemSpecs(specs: Spec[], selections: SpecSelections): LineItemSpec[];
+
+// @public
+export interface UnitPriceEstimate {
+    // (undocumented)
+    currency?: string;
+    // (undocumented)
+    isSale: boolean;
+    // (undocumented)
+    price: number;
+}
+
+// @public
+export function validateSelections(specs: Spec[], selections: SpecSelections, variants?: Variant[]): SpecSelectionIssue[];
+
+// @public
+export interface Variant<TXp = Record<string, unknown>> {
+    // (undocumented)
+    Active?: boolean;
+    // (undocumented)
+    Description?: string | null;
+    // (undocumented)
+    ID: string;
+    // (undocumented)
+    Inventory?: Inventory | null;
+    // (undocumented)
+    Name?: string;
+    // (undocumented)
+    Specs?: VariantSpec[];
+    // (undocumented)
+    xp?: TXp;
+}
+
+// @public
+export interface VariantSpec {
+    // (undocumented)
+    Name?: string;
+    // (undocumented)
+    OptionID?: string | null;
+    // (undocumented)
+    PriceMarkup?: number | null;
+    // (undocumented)
+    PriceMarkupType?: PriceMarkupType;
+    // (undocumented)
+    SpecID: string;
+    // (undocumented)
+    Value?: string;
+}
 
 // (No @packageDocumentation comment for this package)
 

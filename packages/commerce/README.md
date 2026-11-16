@@ -20,8 +20,24 @@ import { OrderCloudService } from '@sitecore-content-sdk/commerce';
 const service = new OrderCloudService({ contextId: 'SITECORE_EDGE_CONTEXT_ID' });
 
 const me = await service.me.get(); // GET /v1/me (anonymous or registered)
-const products = await service.request('/v1/me/products'); // allowlisted OrderCloud buyer paths
+const product = await service.products.get('product-id'); // GET /v1/me/products/{id}
 ```
+
+## Products
+
+`service.products` returns OrderCloud's own (PascalCase) shapes, with prices and visibility for the current shopper:
+
+```ts
+const page = await service.products.list({ search: 'shoe', filters: { 'xp.Brand': 'Acme' } });
+const specs = await service.products.listSpecs('product-id'); // follows pages (max 20 by default)
+const variants = await service.products.listVariants('product-id', { filters: { Active: true } });
+```
+
+`isProductNotFoundError(error)` is true only for an OrderCloud 404, not for a commerce proxy 404 (endpoint not enabled).
+
+Pure helpers implement OrderCloud spec and variant rules and work anywhere (server, browser, tests): `getInitialSelections`, `resolveVariant`, `getOptionAvailability`, `validateSelections` (returns issue codes such as `required` or `variant-unavailable` for the app to localize) and `toLineItemSpecs`. `estimateUnitPrice` gives a display estimate only; OrderCloud computes the authoritative price.
+
+In React, use `ProductProvider` with `useProduct`, `useProductOptions` and `useProductSelection` from `@sitecore-content-sdk/react/commerce` (or `@sitecore-content-sdk/nextjs/commerce`) for a single product, `useProducts(params)` for a page of products, and `useInfiniteProducts(params)` for infinite scroll. Pass `timeout` to `CommerceProvider` to bound every commerce request.
 
 ## Storage patterns
 

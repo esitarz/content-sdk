@@ -4,6 +4,7 @@
 
 ```ts
 
+import { BuyerProduct } from '@sitecore-content-sdk/commerce';
 import { CacheClient } from '@sitecore-content-sdk/core';
 import { CacheOptions } from '@sitecore-content-sdk/core';
 import { ClientError } from '@sitecore-content-sdk/core';
@@ -22,6 +23,7 @@ import { EditMode } from '@sitecore-content-sdk/content/layout';
 import { enableDebug } from '@sitecore-content-sdk/core';
 import { EnhancedOmit } from '@sitecore-content-sdk/core/tools';
 import { ErrorPage } from '@sitecore-content-sdk/content/client';
+import { estimateUnitPrice } from '@sitecore-content-sdk/commerce';
 import { FacetRequest } from '@sitecore-content-sdk/search';
 import { FacetResult } from '@sitecore-content-sdk/search';
 import * as FEAAS from '@sitecore-feaas/clientside/react';
@@ -30,16 +32,22 @@ import { FieldMetadata } from '@sitecore-content-sdk/content/layout';
 import { GenericFieldValue } from '@sitecore-content-sdk/content/layout';
 import { getChildPlaceholder } from '@sitecore-content-sdk/content/layout';
 import { getContentStylesheetLink } from '@sitecore-content-sdk/content/layout';
+import { getDefaultSelections } from '@sitecore-content-sdk/commerce';
 import { getDesignLibraryStylesheetLinks } from '@sitecore-content-sdk/content/layout';
 import { getFieldValue } from '@sitecore-content-sdk/content/layout';
+import { getInitialSelections } from '@sitecore-content-sdk/commerce';
+import { getOptionAvailability } from '@sitecore-content-sdk/commerce';
 import { GraphQLClientError } from '@sitecore-content-sdk/content/client';
 import { GraphQLRequestClient } from '@sitecore-content-sdk/content/client';
 import { GraphQLRequestClientFactoryConfig } from '@sitecore-content-sdk/content/client';
+import { hasVariantSpecs } from '@sitecore-content-sdk/commerce';
 import { ImageField } from '@sitecore-content-sdk/content/layout';
 import { ImageFieldValue } from '@sitecore-content-sdk/content/layout';
 import { ImageSizeParameters } from '@sitecore-content-sdk/content/layout';
 import { ImportEntry } from '@sitecore-content-sdk/content/codegen';
+import { Inventory } from '@sitecore-content-sdk/commerce';
 import { isEditorActive } from '@sitecore-content-sdk/content/editing';
+import { isProductNotFoundError } from '@sitecore-content-sdk/commerce';
 import { Item } from '@sitecore-content-sdk/content/layout';
 import { JSX as JSX_2 } from 'react';
 import { LayoutService } from '@sitecore-content-sdk/content/layout';
@@ -47,8 +55,15 @@ import { LayoutServiceContext } from '@sitecore-content-sdk/content/layout';
 import { LayoutServiceContextData } from '@sitecore-content-sdk/content/layout';
 import { LayoutServiceData } from '@sitecore-content-sdk/content/layout';
 import { LayoutServicePageState } from '@sitecore-content-sdk/content/layout';
+import { LineItemSpec } from '@sitecore-content-sdk/commerce';
 import { LinkField } from '@sitecore-content-sdk/content/layout';
 import { LinkFieldValue } from '@sitecore-content-sdk/content/layout';
+import { ListAllPagesOptions } from '@sitecore-content-sdk/commerce';
+import { ListFilterValue } from '@sitecore-content-sdk/commerce';
+import { ListMeta } from '@sitecore-content-sdk/commerce';
+import { ListOptions } from '@sitecore-content-sdk/commerce';
+import { ListPage } from '@sitecore-content-sdk/commerce';
+import { ListProductsOptions } from '@sitecore-content-sdk/commerce';
 import { mediaApi } from '@sitecore-content-sdk/content/media';
 import { MemoryCacheClient } from '@sitecore-content-sdk/core';
 import { MetadataFields } from '@sitecore-content-sdk/content/layout';
@@ -61,15 +76,22 @@ import { OG_MODIFIED_TIME_TAG } from '@sitecore-content-sdk/content/layout';
 import { OpenGraphFields } from '@sitecore-content-sdk/content/layout';
 import { OpenGraphImageField } from '@sitecore-content-sdk/content/layout';
 import { OpenGraphImageFieldValue } from '@sitecore-content-sdk/content/layout';
+import { OptionAvailability } from '@sitecore-content-sdk/commerce';
 import { OrderCloudService } from '@sitecore-content-sdk/commerce';
 import { Page } from '@sitecore-content-sdk/content/client';
 import { PageMetadataFields } from '@sitecore-content-sdk/content/layout';
 import { PageMode } from '@sitecore-content-sdk/content/client';
+import { PriceBreak } from '@sitecore-content-sdk/commerce';
+import { PriceMarkupType } from '@sitecore-content-sdk/commerce';
+import { PriceSchedule } from '@sitecore-content-sdk/commerce';
+import { ProductLineItemDraft } from '@sitecore-content-sdk/commerce';
+import { ProductsApi } from '@sitecore-content-sdk/commerce';
 import { QuerySuggestionItem } from '@sitecore-content-sdk/search';
 import { default as React_2 } from 'react';
 import { ReactNode } from 'react';
 import { RefAttributes } from 'react';
 import { resetEditorChromes } from '@sitecore-content-sdk/content/editing';
+import { resolveVariant } from '@sitecore-content-sdk/commerce';
 import { RetryStrategy } from '@sitecore-content-sdk/content/client';
 import { RichTextField } from '@sitecore-content-sdk/content/layout';
 import { RouteData } from '@sitecore-content-sdk/content/layout';
@@ -82,13 +104,26 @@ import { ShopperUserType } from '@sitecore-content-sdk/commerce';
 import { SitecoreConfig } from '@sitecore-content-sdk/content/config';
 import { SitePathService } from '@sitecore-content-sdk/content/site';
 import { SitePathServiceConfig } from '@sitecore-content-sdk/content/site';
+import { Spec } from '@sitecore-content-sdk/commerce';
+import { SpecOption } from '@sitecore-content-sdk/commerce';
+import { SpecSelection } from '@sitecore-content-sdk/commerce';
+import { SpecSelectionIssue } from '@sitecore-content-sdk/commerce';
+import { SpecSelectionIssueCode } from '@sitecore-content-sdk/commerce';
+import { SpecSelections } from '@sitecore-content-sdk/commerce';
 import { TextField } from '@sitecore-content-sdk/content/layout';
+import { toLineItemSpecs } from '@sitecore-content-sdk/commerce';
+import { UnitPriceEstimate } from '@sitecore-content-sdk/commerce';
+import { validateSelections } from '@sitecore-content-sdk/commerce';
+import { Variant } from '@sitecore-content-sdk/commerce';
+import { VariantSpec } from '@sitecore-content-sdk/commerce';
 
 // @public
 export const AppPlaceholder: (props: AppPlaceholderProps) => React_2.JSX.Element;
 
 // @public
 export type AppPlaceholderProps = Omit<PlaceholderProps, 'componentMap' | 'page'> & Required<Pick<PlaceholderProps, 'componentMap' | 'page'>>;
+
+export { BuyerProduct }
 
 // @public
 export class BYOCComponent extends React_2.Component<BYOCComponentProps> {
@@ -170,6 +205,7 @@ export interface CommerceProviderProps {
     // (undocumented)
     children?: React_2.ReactNode;
     eager?: boolean;
+    timeout?: number;
     tokens: CommerceTokenOptions;
 }
 
@@ -286,6 +322,8 @@ export const ErrorComponent: (props: {
 
 export { ErrorPage }
 
+export { estimateUnitPrice }
+
 // @public (undocumented)
 export const FEaaSComponent: (props: FEaaSComponentProps) => JSX_2.Element | null;
 
@@ -354,15 +392,23 @@ export { getChildPlaceholder }
 
 export { getContentStylesheetLink }
 
+export { getDefaultSelections }
+
 export { getDesignLibraryStylesheetLinks }
 
 export { getFieldValue }
+
+export { getInitialSelections }
+
+export { getOptionAvailability }
 
 export { GraphQLClientError }
 
 export { GraphQLRequestClient }
 
 export { GraphQLRequestClientFactoryConfig }
+
+export { hasVariantSpecs }
 
 // @public
 const Image_2: React_2.FC<ImageProps>;
@@ -392,7 +438,14 @@ export type ImportMapImport = {
     default: ImportEntry[];
 };
 
+// @public
+export type InfiniteProductsParams = Omit<ListProductsOptions, 'page'>;
+
+export { Inventory }
+
 export { isEditorActive }
+
+export { isProductNotFoundError }
 
 export { Item }
 
@@ -414,6 +467,8 @@ export { LayoutServiceData }
 
 export { LayoutServicePageState }
 
+export { LineItemSpec }
+
 // @public
 export const Link: React_2.FC<LinkProps>;
 
@@ -427,6 +482,18 @@ export type LinkProps = EditableFieldProps<LinkProps> & React_2.AnchorHTMLAttrib
     showLinkTextWithChildrenPresent?: boolean;
     renderChildrenWhenEmpty?: boolean;
 };
+
+export { ListAllPagesOptions }
+
+export { ListFilterValue }
+
+export { ListMeta }
+
+export { ListOptions }
+
+export { ListPage }
+
+export { ListProductsOptions }
 
 export { mediaApi }
 
@@ -456,6 +523,8 @@ export { OpenGraphFields }
 export { OpenGraphImageField }
 
 export { OpenGraphImageFieldValue }
+
+export { OptionAvailability }
 
 export { OrderCloudService }
 
@@ -504,6 +573,55 @@ interface PlaceholderProps {
 export { PlaceholderProps as PlaceholderComponentProps }
 export { PlaceholderProps }
 
+export { PriceBreak }
+
+export { PriceMarkupType }
+
+export { PriceSchedule }
+
+// @public
+export interface ProductHookOptions {
+    optional?: boolean;
+}
+
+// @public
+export interface ProductInitialData<TXp = Record<string, unknown>> {
+    // (undocumented)
+    product: BuyerProduct<TXp>;
+    specs?: Spec[];
+    variants?: Variant[];
+}
+
+export { ProductLineItemDraft }
+
+// @public
+export type ProductListStatus = 'idle' | 'loading' | 'success' | 'error';
+
+// @public
+export type ProductOptionsStatus = 'idle' | 'loading' | 'success' | 'error';
+
+// @public
+export function ProductProvider<TProduct = BuyerProduct, TXp = Record<string, unknown>>(props: ProductProviderProps<TProduct, TXp>): React_2.ReactElement;
+
+// @public
+export interface ProductProviderProps<TProduct = BuyerProduct, TXp = Record<string, unknown>> {
+    // (undocumented)
+    children?: React_2.ReactNode;
+    enabled?: boolean;
+    initialData?: ProductInitialData<TXp>;
+    initialSelections?: SpecSelections;
+    options?: 'auto' | 'none';
+    productId: string | undefined;
+    revalidate?: boolean;
+    select?: (product: BuyerProduct<TXp>) => TProduct;
+    validateSpec?: (spec: Spec, selection: SpecSelection) => SpecSelectionIssue<string> | undefined;
+}
+
+export { ProductsApi }
+
+// @public
+export type ProductStatus = 'idle' | 'loading' | 'success' | 'not-found' | 'error';
+
 // @public
 export type ReactContentSdkComponent = (ComponentType | ReactModule) & {
     componentType?: 'server' | 'client' | 'universal';
@@ -520,6 +638,8 @@ export type ReactModule = {
 export const renderEmptyPlaceholder: (node: React_2.ReactNode | React_2.ReactElement[]) => React_2.JSX.Element;
 
 export { resetEditorChromes }
+
+export { resolveVariant }
 
 export { RetryStrategy }
 
@@ -573,6 +693,18 @@ export { SitePathService }
 
 export { SitePathServiceConfig }
 
+export { Spec }
+
+export { SpecOption }
+
+export { SpecSelection }
+
+export { SpecSelectionIssue }
+
+export { SpecSelectionIssueCode }
+
+export { SpecSelections }
+
 // Warning: (ae-forgotten-export) The symbol "TextProps" needs to be exported by the entry point api-surface.d.ts
 //
 // @public
@@ -581,8 +713,42 @@ export { Text_2 as Text }
 
 export { TextField }
 
+export { toLineItemSpecs }
+
+export { UnitPriceEstimate }
+
 // @public
 export function useCommerce(): CommerceContextValue;
+
+// @public
+export function useInfiniteProducts<TProduct = BuyerProduct, TXp = Record<string, unknown>>(params?: InfiniteProductsParams, options?: UseInfiniteProductsOptions<TProduct, TXp>): UseInfiniteProductsState<TProduct, TXp>;
+
+// @public
+export interface UseInfiniteProductsOptions<TProduct = BuyerProduct, TXp = Record<string, unknown>> extends UseProductsOptions<TProduct, TXp> {
+    initialData?: ListPage<BuyerProduct<TXp>>;
+}
+
+// @public
+export interface UseInfiniteProductsState<TProduct = BuyerProduct, TXp = Record<string, unknown>> {
+    error: CommerceError | null;
+    fetchNextPage(): Promise<void>;
+    hasNextPage: boolean;
+    // (undocumented)
+    isError: boolean;
+    // (undocumented)
+    isFetchingNextPage: boolean;
+    isFetchNextPageError: boolean;
+    isLoading: boolean;
+    isRefetching: boolean;
+    // (undocumented)
+    isSuccess: boolean;
+    items: TProduct[];
+    meta: ListMeta | null;
+    pages: ListPage<BuyerProduct<TXp>>[];
+    rawItems: BuyerProduct<TXp>[];
+    refetch(): Promise<void>;
+    status: ProductListStatus;
+}
 
 // @public
 export const useInfiniteSearch: <T extends SearchDocument = SearchDocument>(options: UseInfiniteSearchOptions<T>) => UseInfiniteSearchState<T>;
@@ -612,6 +778,117 @@ export type UseInfiniteSearchState<T extends SearchDocument = SearchDocument> = 
     isLoadingMore: boolean;
     isLoadingMoreError: boolean;
 };
+
+// @public
+export function useProduct<TProduct = BuyerProduct, TXp = Record<string, unknown>>(): UseProductState<TProduct, TXp>;
+
+// @public
+export function useProduct<TProduct = BuyerProduct, TXp = Record<string, unknown>>(options: {
+    optional: true;
+}): UseProductState<TProduct, TXp> | null;
+
+// @public
+export function useProductOptions(): UseProductOptionsState;
+
+// @public
+export function useProductOptions(options: {
+    optional: true;
+}): UseProductOptionsState | null;
+
+// @public
+export interface UseProductOptionsState {
+    // (undocumented)
+    error: CommerceError | null;
+    // (undocumented)
+    hasVariantSpecs: boolean;
+    // (undocumented)
+    isError: boolean;
+    // (undocumented)
+    isLoading: boolean;
+    optionAvailability: Record<string, Record<string, boolean>>;
+    refetch(): Promise<void>;
+    // (undocumented)
+    specs: Spec[];
+    // (undocumented)
+    status: ProductOptionsStatus;
+    // (undocumented)
+    variants: Variant[];
+}
+
+// @public
+export function useProducts<TProduct = BuyerProduct, TXp = Record<string, unknown>>(params?: ListProductsOptions, options?: UseProductsOptions<TProduct, TXp>): UseProductsState<TProduct, TXp>;
+
+// @public
+export function useProductSelection(): UseProductSelectionState;
+
+// @public
+export function useProductSelection(options: {
+    optional: true;
+}): UseProductSelectionState | null;
+
+// @public
+export interface UseProductSelectionState {
+    getLineItemDraft(): ProductLineItemDraft | null;
+    isComplete: boolean;
+    issues: SpecSelectionIssue<string>[];
+    resetSelections(): void;
+    // (undocumented)
+    selectedVariant: Variant | undefined;
+    // (undocumented)
+    selections: SpecSelections;
+    setSelection(specId: string, selection: SpecSelection): void;
+    validate(): boolean;
+    visibleIssues: SpecSelectionIssue<string>[];
+}
+
+// @public
+export interface UseProductsOptions<TProduct = BuyerProduct, TXp = Record<string, unknown>> {
+    enabled?: boolean;
+    initialData?: ListPage<BuyerProduct<TXp>>;
+    keepPreviousData?: boolean;
+    revalidate?: boolean;
+    select?: (product: BuyerProduct<TXp>) => TProduct;
+}
+
+// @public
+export interface UseProductsState<TProduct = BuyerProduct, TXp = Record<string, unknown>> {
+    // (undocumented)
+    error: CommerceError | null;
+    // (undocumented)
+    isError: boolean;
+    isLoading: boolean;
+    isRefetching: boolean;
+    // (undocumented)
+    isSuccess: boolean;
+    items: TProduct[];
+    meta: ListMeta | null;
+    rawItems: BuyerProduct<TXp>[];
+    refetch(): Promise<void>;
+    // (undocumented)
+    status: ProductListStatus;
+}
+
+// @public
+export interface UseProductState<TProduct = BuyerProduct, TXp = Record<string, unknown>> {
+    // (undocumented)
+    error: CommerceError | null;
+    // (undocumented)
+    isError: boolean;
+    isLoading: boolean;
+    // (undocumented)
+    isNotFound: boolean;
+    isRefetching: boolean;
+    // (undocumented)
+    isSuccess: boolean;
+    product: TProduct | null;
+    // (undocumented)
+    productId: string | undefined;
+    // (undocumented)
+    rawProduct: BuyerProduct<TXp> | null;
+    refetch(): Promise<void>;
+    // (undocumented)
+    status: ProductStatus;
+}
 
 // @public
 export const useSearch: <T extends SearchDocument = SearchDocument>(options: UseSearchOptions<T>) => UseSearchState<T>;
@@ -696,6 +973,12 @@ export type UseSuggestState<T extends SearchDocument = SearchDocument> = Omit<In
     isError: boolean;
     isPreviousData: boolean;
 };
+
+export { validateSelections }
+
+export { Variant }
+
+export { VariantSpec }
 
 // Warning: (ae-forgotten-export) The symbol "ComponentProps" needs to be exported by the entry point api-surface.d.ts
 // Warning: (ae-forgotten-export) The symbol "WrapperProps" needs to be exported by the entry point api-surface.d.ts
