@@ -63,6 +63,30 @@ export class CommerceError extends Error {
     this.code = options.code;
     this.errors = options.errors;
   }
+
+}
+
+/**
+ * Checks for an OrderCloud error, optionally narrowed by status and error code.
+ * @param {unknown} error error to inspect
+ * @param {object} [options] optional status and code filters
+ * @param {number} [options.status] HTTP status to match
+ * @param {string} [options.code] OrderCloud `ErrorCode` to match
+ * @returns {boolean} true when the error is from OrderCloud and matches every filter
+ * @public
+ */
+export function isOrderCloudError(
+  error: unknown,
+  options: { status?: number; code?: string } = {}
+): boolean {
+  return (
+    error instanceof CommerceError &&
+    error.source === 'ordercloud' &&
+    (options.status === undefined || error.status === options.status) &&
+    (options.code === undefined ||
+      error.code === options.code ||
+      !!error.errors?.some((entry) => entry.ErrorCode === options.code))
+  );
 }
 
 /**

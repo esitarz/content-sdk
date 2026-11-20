@@ -5,10 +5,15 @@ import { encodeBase64Url } from '../token/base64url';
 describe('cookie-codec', () => {
   describe('getCommerceCookieNames', () => {
     it('should use unsuffixed names for the default key', () => {
-      expect(getCommerceCookieNames()).to.deep.equal({ session: 'sc_oc_s', refresh: 'sc_oc_rt' });
+      expect(getCommerceCookieNames()).to.deep.equal({
+        session: 'sc_oc_s',
+        refresh: 'sc_oc_rt',
+        marker: 'sc_oc_seen',
+      });
       expect(getCommerceCookieNames('default')).to.deep.equal({
         session: 'sc_oc_s',
         refresh: 'sc_oc_rt',
+        marker: 'sc_oc_seen',
       });
     });
 
@@ -16,6 +21,7 @@ describe('cookie-codec', () => {
       expect(getCommerceCookieNames('en-US/x')).to.deep.equal({
         session: 'sc_oc_s_en-USx',
         refresh: 'sc_oc_rt_en-USx',
+        marker: 'sc_oc_seen_en-USx',
       });
     });
 

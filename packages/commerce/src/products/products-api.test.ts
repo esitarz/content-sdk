@@ -129,6 +129,39 @@ describe('service.products', () => {
       nock(EDGE).get(BASE).reply(200, page([], 1, 0));
       expect((await service.products.list()).Items).to.deep.equal([]);
     });
+
+    it('loads product IDs in input order and chunks requests at 100', async () => {
+      const { service } = createService();
+      const ids = Array.from({ length: 102 }, (_, index) => `p-${index}`);
+      const orderedIds = ['p-2', 'p-1', ...ids.slice(3)];
+      nock(EDGE)
+        .get(BASE)
+        .query((query) => query.pageSize === '100' && query.ID === orderedIds.slice(0, 100).join('|'))
+        .reply(200, page([{ ID: 'p-2', Name: 'Two' }, { ID: 'p-1', Name: 'One' }], 1, 1, 2))
+        .get(BASE)
+        .query({ pageSize: '1', ID: 'p-101' })
+        .reply(200, page([{ ID: 'p-101', Name: 'Last' }], 1, 1, 1));
+
+      const result = await service.products.listByIds([
+        ' p-2 ',
+        'p-1',
+        'p-2',
+        ...ids.slice(3),
+      ]);
+      expect(result.Items.map((item) => item.ID)).to.deep.equal(['p-2', 'p-1', 'p-101']);
+      expect(result.Meta.TotalCount).to.equal(3);
+    });
+
+    it('returns an empty list and rejects IDs that cannot be represented in a filter', async () => {
+      const { service, tokenClient } = createService();
+      expect(await service.products.listByIds([' ', ''])).to.deep.include({
+        Items: [],
+      });
+      const error = await service.products.listByIds(['p|other']).catch((caught) => caught);
+      expect(error).to.be.instanceOf(CommerceError);
+      expect(error.source).to.equal('sdk');
+      expect(tokenClient.getAnonymousToken.called).to.equal(false);
+    });
   });
 
   describe('listSpecs / listVariants', () => {

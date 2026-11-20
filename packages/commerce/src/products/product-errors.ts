@@ -1,4 +1,4 @@
-import { CommerceError } from '../errors';
+import { isOrderCloudError } from '../errors';
 
 /**
  * Checks whether an error is an OrderCloud "not found" response for a product.
@@ -9,5 +9,5 @@ import { CommerceError } from '../errors';
  * @public
  */
 export function isProductNotFoundError(error: unknown): boolean {
-  return error instanceof CommerceError && error.status === 404 && error.source === 'ordercloud';
+  return isOrderCloudError(error, { status: 404 });
 }

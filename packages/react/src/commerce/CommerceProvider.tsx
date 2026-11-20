@@ -1,6 +1,7 @@
 'use client';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AddLineItemResult,
   CommerceCookieOptions,
   CommerceError,
   CommerceTokenClient,
@@ -8,6 +9,7 @@ import {
   EdgeTokenClient,
   MeUser,
   OrderCloudService,
+  ProductLineItemDraft,
   RouteHandlerTokenClient,
   SessionChangeEvent,
   ShopperSession,
@@ -19,6 +21,7 @@ import {
   DEFAULT_TOKEN_KEY,
 } from '@sitecore-content-sdk/commerce';
 import { useSitecore } from '../components/SitecoreProvider';
+import type { CartData, CartReset } from './useCart';
 
 /**
  * How the provider obtains and stores shopper tokens.
@@ -139,6 +142,7 @@ export interface ShopperState {
 export interface CommerceInternalContextValue {
   sessionVersion: number;
   shopper: ShopperState;
+  cart: CartInternalState;
   loadShopper(force?: boolean): Promise<void>;
   /**
    * Current identity version, read synchronously (updated before `sessionVersion` re-renders).
@@ -154,6 +158,27 @@ export interface CommerceInternalContextValue {
     factory: (signal: AbortSignal) => Promise<T>,
     options?: { signal?: AbortSignal; force?: boolean }
   ): Promise<T>;
+  loadCart(force?: boolean, signal?: AbortSignal): Promise<void>;
+  addCartLineItem(
+    input: ProductLineItemDraft & { Quantity: number }
+  ): Promise<AddLineItemResult>;
+  updateCartLineItem(lineItemId: string, quantity: number): Promise<void>;
+  removeCartLineItem(lineItemId: string): Promise<void>;
+  clearCart(): Promise<void>;
+  acknowledgeCartReset(): void;
+}
+
+/**
+ * Shared cart state held by `CommerceProvider`.
+ * @internal
+ */
+export interface CartInternalState {
+  data: CartData | null;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  isRefetching: boolean;
+  isMutating: boolean;
+  error: CommerceError | null;
+  reset: CartReset | null;
 }
 
 interface InFlightRequest {
@@ -175,6 +200,14 @@ const CommerceInternalContext = React.createContext<CommerceInternalContextValue
 );
 
 const IDLE_SHOPPER: ShopperState = { user: null, status: 'idle', error: null };
+const IDLE_CART: CartInternalState = {
+  data: null,
+  status: 'idle',
+  isRefetching: false,
+  isMutating: false,
+  error: null,
+  reset: null,
+};
 
 const toError = (error: unknown): CommerceError =>
   error instanceof CommerceError
@@ -271,12 +304,16 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
   const [lastSessionChange, setLastSessionChange] = useState<SessionChangeEvent | null>(null);
   const [sessionVersion, setSessionVersion] = useState(0);
   const [shopper, setShopper] = useState<ShopperState>(IDLE_SHOPPER);
+  const [cart, setCart] = useState<CartInternalState>(IDLE_CART);
 
   // identity version, bumped synchronously by session events so loads can read it immediately
   const versionRef = useRef(0);
   const shopperRef = useRef<{ version: number; controller: AbortController | null } | null>(null);
   const setupRef = useRef(setup);
   const inFlightRef = useRef(new Map<string, InFlightRequest>());
+  const cartLoadedVersionRef = useRef<number | null>(null);
+  const cartMutationQueueRef = useRef(Promise.resolve());
+  const activeCartMutationsRef = useRef(0);
 
   useEffect(() => {
     // reset only when the setup changes after mount; child effects may already have updated state
@@ -285,10 +322,12 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
       setSession(null);
       setLastSessionChange(null);
       setShopper(IDLE_SHOPPER);
+      setCart(IDLE_CART);
       setError(configError);
       setStatus(configError ? 'error' : 'idle');
       shopperRef.current?.controller?.abort();
       shopperRef.current = null;
+      cartLoadedVersionRef.current = null;
       inFlightRef.current.clear();
     }
 
@@ -301,6 +340,16 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
       if (event.reason !== 'refreshed') {
         versionRef.current += 1;
         inFlightRef.current.clear();
+        cartLoadedVersionRef.current = null;
+        setCart((current) => ({
+          ...IDLE_CART,
+          reset:
+            event.reason === 'replaced' && event.previousUserType === 'anonymous'
+              ? { reason: 'session-replaced' }
+              : event.reason === 'acquired' || event.reason === 'cleared'
+              ? null
+              : current.reset,
+        }));
         setSessionVersion(versionRef.current);
         setLastSessionChange(event);
       }
@@ -475,6 +524,152 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
     []
   );
 
+  const loadCart = useCallback(
+    async (force = false, signal?: AbortSignal): Promise<void> => {
+      if (!setup) {
+        setCart({
+          ...IDLE_CART,
+          status: 'error',
+          error: configError,
+        });
+        return;
+      }
+      if (signal?.aborted) return;
+
+      setCart((current) => ({
+        ...current,
+        status: current.data ? 'success' : 'loading',
+        isRefetching: !!current.data,
+        error: null,
+      }));
+
+      try {
+        await ensureSession();
+        if (signal?.aborted) return;
+        const version = getSessionVersion();
+        if (!force && cartLoadedVersionRef.current === version) {
+          setCart((current) => ({ ...current, isRefetching: false }));
+          return;
+        }
+
+        const order = await dedupe(
+          'cart:order',
+          (sharedSignal) => setup.service.cart.get({ signal: sharedSignal }),
+          { signal, force }
+        );
+        if (signal?.aborted || versionRef.current !== version) return;
+
+        const lineItems = order.ID
+          ? (
+              await dedupe(
+                'cart:line-items',
+                (sharedSignal) =>
+                  setup.service.cart.listLineItems(undefined, { signal: sharedSignal }),
+                { signal, force }
+              )
+            ).Items
+          : [];
+        if (signal?.aborted || versionRef.current !== version) return;
+
+        cartLoadedVersionRef.current = version;
+        setCart((current) => ({
+          ...current,
+          data: { order, lineItems },
+          status: 'success',
+          isRefetching: false,
+          error: null,
+        }));
+      } catch (err) {
+        if (signal?.aborted || isAborted(err)) return;
+        cartLoadedVersionRef.current = null;
+        setCart((current) => ({
+          ...current,
+          status: 'error',
+          isRefetching: false,
+          error: toError(err),
+        }));
+      }
+    },
+    [setup, configError, ensureSession, getSessionVersion, dedupe]
+  );
+
+  const runCartMutation = useCallback(
+    <T,>(operation: (service: OrderCloudService) => Promise<T>): Promise<T> => {
+      if (!setup) return Promise.reject(configError as CommerceError);
+      if (isEditing) {
+        return Promise.reject(
+          new CommerceError('Cart mutations are disabled in editing and preview modes.', {
+            source: 'sdk',
+            code: 'editing-mode',
+          })
+        );
+      }
+
+      activeCartMutationsRef.current += 1;
+      setCart((current) => ({ ...current, isMutating: true }));
+      const run = async () => {
+        try {
+          const result = await operation(setup.service);
+          await loadCart(true);
+          return result;
+        } catch (error) {
+          await loadCart(true);
+          throw error;
+        } finally {
+          activeCartMutationsRef.current -= 1;
+          setCart((current) => ({
+            ...current,
+            isMutating: activeCartMutationsRef.current > 0,
+          }));
+        }
+      };
+      const next = cartMutationQueueRef.current.then(run, run);
+      cartMutationQueueRef.current = next.then(
+        () => undefined,
+        () => undefined
+      );
+      return next;
+    },
+    [setup, configError, isEditing, loadCart]
+  );
+
+  const addCartLineItem = useCallback(
+    async (input: ProductLineItemDraft & { Quantity: number }) => {
+      const result = await runCartMutation((service) => service.cart.addLineItem(input));
+      if (result.sessionRenewed) {
+        setCart((current) => ({
+          ...current,
+          reset: { reason: 'cart-submitted' },
+        }));
+      }
+      return result;
+    },
+    [runCartMutation]
+  );
+
+  const updateCartLineItem = useCallback(
+    (lineItemId: string, quantity: number) =>
+      runCartMutation(async (service) => {
+        await service.cart.updateLineItem(lineItemId, { Quantity: quantity });
+      }),
+    [runCartMutation]
+  );
+
+  const removeCartLineItem = useCallback(
+    (lineItemId: string) =>
+      runCartMutation((service) => service.cart.removeLineItem(lineItemId)),
+    [runCartMutation]
+  );
+
+  const clearCart = useCallback(
+    () => runCartMutation((service) => service.cart.delete()),
+    [runCartMutation]
+  );
+
+  const acknowledgeCartReset = useCallback(() => {
+    setCart((current) => (current.reset ? { ...current, reset: null } : current));
+  }, []);
+
   const userType = session?.userType ?? null;
 
   const value = useMemo<CommerceContextValue>(
@@ -504,8 +699,34 @@ export const CommerceProvider = (props: CommerceProviderProps): React.ReactEleme
   );
 
   const internal = useMemo<CommerceInternalContextValue>(
-    () => ({ sessionVersion, shopper, loadShopper, getSessionVersion, dedupe }),
-    [sessionVersion, shopper, loadShopper, getSessionVersion, dedupe]
+    () => ({
+      sessionVersion,
+      shopper,
+      loadShopper,
+      getSessionVersion,
+      dedupe,
+      cart,
+      loadCart,
+      addCartLineItem,
+      updateCartLineItem,
+      removeCartLineItem,
+      clearCart,
+      acknowledgeCartReset,
+    }),
+    [
+      sessionVersion,
+      shopper,
+      loadShopper,
+      getSessionVersion,
+      dedupe,
+      cart,
+      loadCart,
+      addCartLineItem,
+      updateCartLineItem,
+      removeCartLineItem,
+      clearCart,
+      acknowledgeCartReset,
+    ]
   );
 
   return (

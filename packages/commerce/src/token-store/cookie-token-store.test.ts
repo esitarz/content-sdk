@@ -57,6 +57,16 @@ describe('createCookieTokenStore', () => {
       maxAge: 600,
     });
     expect(store.get('default')).to.deep.equal(anonymous);
+    expect(jar.get('sc_oc_seen')).to.deep.equal({
+      value: 'anonymous',
+      attributes: {
+        path: '/',
+        sameSite: 'lax',
+        secure: true,
+        httpOnly: false,
+        maxAge: 31_536_000,
+      },
+    });
   });
 
   it('should clamp max-age at 0 for expired sessions', () => {
@@ -71,6 +81,19 @@ describe('createCookieTokenStore', () => {
     expect(createCookieTokenStore(adapter, { refreshTokenStorage: 'cookie' }).get('default')).to.equal(
       null
     );
+  });
+
+  it('should return an expired anonymous placeholder when only the marker remains', () => {
+    const { adapter, jar } = createFakeAdapter();
+    const store = createCookieTokenStore(adapter, { refreshTokenStorage: 'none', now: () => NOW });
+    store.set('default', anonymous);
+    jar.delete('sc_oc_s');
+
+    expect(store.get('default')).to.deep.equal({
+      accessToken: '',
+      expiresAt: 0,
+      userType: 'anonymous',
+    });
   });
 
   describe('refreshTokenStorage: none', () => {

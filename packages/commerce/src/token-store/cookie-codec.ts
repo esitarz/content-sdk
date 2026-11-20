@@ -1,4 +1,9 @@
-import { DEFAULT_TOKEN_KEY, REFRESH_COOKIE_NAME, SESSION_COOKIE_NAME } from '../constants';
+import {
+  DEFAULT_TOKEN_KEY,
+  REFRESH_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  SESSION_MARKER_COOKIE_NAME,
+} from '../constants';
 import { ShopperSession, ShopperUserType, TokenKey } from '../models';
 import { decodeBase64Url, encodeBase64Url } from '../token/base64url';
 
@@ -24,6 +29,10 @@ export interface CommerceCookieNames {
    * Cookie holding the refresh token (registered sessions only).
    */
   refresh: string;
+  /**
+   * Non-secret cookie holding only the last shopper type.
+   */
+  marker: string;
 }
 
 /**
@@ -35,13 +44,21 @@ export interface CommerceCookieNames {
  */
 export function getCommerceCookieNames(key: TokenKey = DEFAULT_TOKEN_KEY): CommerceCookieNames {
   if (key === DEFAULT_TOKEN_KEY) {
-    return { session: SESSION_COOKIE_NAME, refresh: REFRESH_COOKIE_NAME };
+    return {
+      session: SESSION_COOKIE_NAME,
+      refresh: REFRESH_COOKIE_NAME,
+      marker: SESSION_MARKER_COOKIE_NAME,
+    };
   }
 
   const suffix = key.replace(/[^A-Za-z0-9-]/g, '');
   if (!suffix) throw new Error(`Invalid commerce token key: "${key}"`);
 
-  return { session: `${SESSION_COOKIE_NAME}_${suffix}`, refresh: `${REFRESH_COOKIE_NAME}_${suffix}` };
+  return {
+    session: `${SESSION_COOKIE_NAME}_${suffix}`,
+    refresh: `${REFRESH_COOKIE_NAME}_${suffix}`,
+    marker: `${SESSION_MARKER_COOKIE_NAME}_${suffix}`,
+  };
 }
 
 /**

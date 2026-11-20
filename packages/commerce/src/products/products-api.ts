@@ -42,6 +42,13 @@ export interface ProductsApi {
     options?: CommerceRequestOptions
   ): Promise<ListPage<BuyerProduct<TXp>>>;
   /**
+   * Gets up to any number of products in input order, dropping missing and duplicate IDs.
+   */
+  listByIds<TXp = Record<string, unknown>>(
+    productIds: string[],
+    options?: CommerceRequestOptions
+  ): Promise<ListPage<BuyerProduct<TXp>>>;
+  /**
    * Lists the specs of a product (`GET /v1/me/products/{productID}/specs`). Follows pages by default.
    */
   listSpecs(
@@ -115,6 +122,64 @@ export function createProductsApi(request: ProductsRequest): ProductsApi {
         withQuery('/v1/me/products', serializeListOptions(params)),
         options
       ),
+    listByIds: async <TXp>(
+      productIds: string[],
+      options?: CommerceRequestOptions
+    ): Promise<ListPage<BuyerProduct<TXp>>> => {
+      const ids = [
+        ...new Set(
+          (productIds ?? [])
+            .map((id) => (typeof id === 'string' ? id.trim() : ''))
+            .filter(Boolean)
+        ),
+      ];
+      if (ids.some((id) => id.includes('|'))) {
+        throw new CommerceError('Product IDs cannot contain "|".', { source: 'sdk' });
+      }
+      if (!ids.length) {
+        return {
+          Items: [],
+          Meta: { Page: 1, PageSize: 0, TotalCount: 0, TotalPages: 1, ItemRange: [0, 0] },
+        };
+      }
+
+      const chunks: string[][] = [];
+      for (let index = 0; index < ids.length; index += 100) {
+        chunks.push(ids.slice(index, index + 100));
+      }
+      const pages = await Promise.all(
+        chunks.map((chunk) =>
+          get<ListPage<BuyerProduct<TXp>>>(
+            withQuery(
+              '/v1/me/products',
+              serializeListOptions({ pageSize: chunk.length, filters: { ID: chunk } })
+            ),
+            options
+          )
+        )
+      );
+      const byId = new Map<string, BuyerProduct<TXp>>();
+      for (const page of pages) {
+        for (const product of page.Items ?? []) {
+          if (product?.ID) byId.set(product.ID, product);
+        }
+      }
+      const Items: BuyerProduct<TXp>[] = [];
+      for (const id of ids) {
+        const product = byId.get(id);
+        if (product) Items.push(product);
+      }
+      return {
+        Items,
+        Meta: {
+          Page: 1,
+          PageSize: Items.length,
+          TotalCount: Items.length,
+          TotalPages: 1,
+          ItemRange: [Items.length ? 1 : 0, Items.length],
+        },
+      };
+    },
     listSpecs: async (productId, params, options) =>
       listPaged<Spec>(`${productPath(productId)}/specs`, params, options),
     listVariants: async (productId, params, options) =>

@@ -4,6 +4,7 @@
 
 ```ts
 
+import { AddLineItemResult } from '@sitecore-content-sdk/commerce';
 import { BuyerProduct } from '@sitecore-content-sdk/commerce';
 import { CacheClient } from '@sitecore-content-sdk/core';
 import { CacheOptions } from '@sitecore-content-sdk/core';
@@ -55,10 +56,13 @@ import { LayoutServiceContext } from '@sitecore-content-sdk/content/layout';
 import { LayoutServiceContextData } from '@sitecore-content-sdk/content/layout';
 import { LayoutServiceData } from '@sitecore-content-sdk/content/layout';
 import { LayoutServicePageState } from '@sitecore-content-sdk/content/layout';
+import { LineItem } from '@sitecore-content-sdk/commerce';
 import { LineItemSpec } from '@sitecore-content-sdk/commerce';
 import { LinkField } from '@sitecore-content-sdk/content/layout';
 import { LinkFieldValue } from '@sitecore-content-sdk/content/layout';
 import { ListAllPagesOptions } from '@sitecore-content-sdk/commerce';
+import { ListFacet } from '@sitecore-content-sdk/commerce';
+import { ListFacetValue } from '@sitecore-content-sdk/commerce';
 import { ListFilterValue } from '@sitecore-content-sdk/commerce';
 import { ListMeta } from '@sitecore-content-sdk/commerce';
 import { ListOptions } from '@sitecore-content-sdk/commerce';
@@ -77,6 +81,7 @@ import { OpenGraphFields } from '@sitecore-content-sdk/content/layout';
 import { OpenGraphImageField } from '@sitecore-content-sdk/content/layout';
 import { OpenGraphImageFieldValue } from '@sitecore-content-sdk/content/layout';
 import { OptionAvailability } from '@sitecore-content-sdk/commerce';
+import { Order } from '@sitecore-content-sdk/commerce';
 import { OrderCloudService } from '@sitecore-content-sdk/commerce';
 import { Page } from '@sitecore-content-sdk/content/client';
 import { PageMetadataFields } from '@sitecore-content-sdk/content/layout';
@@ -86,6 +91,7 @@ import { PriceMarkupType } from '@sitecore-content-sdk/commerce';
 import { PriceSchedule } from '@sitecore-content-sdk/commerce';
 import { ProductLineItemDraft } from '@sitecore-content-sdk/commerce';
 import { ProductsApi } from '@sitecore-content-sdk/commerce';
+import { QuantityIssueCode } from '@sitecore-content-sdk/commerce';
 import { QuerySuggestionItem } from '@sitecore-content-sdk/search';
 import { default as React_2 } from 'react';
 import { ReactNode } from 'react';
@@ -116,6 +122,8 @@ import { UnitPriceEstimate } from '@sitecore-content-sdk/commerce';
 import { validateSelections } from '@sitecore-content-sdk/commerce';
 import { Variant } from '@sitecore-content-sdk/commerce';
 import { VariantSpec } from '@sitecore-content-sdk/commerce';
+
+export { AddLineItemResult }
 
 // @public
 export const AppPlaceholder: (props: AppPlaceholderProps) => React_2.JSX.Element;
@@ -170,6 +178,20 @@ export { BYOCWrapper }
 export { CacheClient }
 
 export { CacheOptions }
+
+// @public
+export interface CartData<TOrderXp = Record<string, unknown>, TLineItemXp = Record<string, unknown>> {
+    // (undocumented)
+    lineItems: LineItem<TLineItemXp>[];
+    // (undocumented)
+    order: Order<TOrderXp>;
+}
+
+// @public
+export interface CartReset {
+    // (undocumented)
+    reason: 'cart-submitted' | 'session-replaced';
+}
 
 // @public
 export const ClientEditingChromesUpdate: () => JSX_2.Element;
@@ -467,6 +489,8 @@ export { LayoutServiceData }
 
 export { LayoutServicePageState }
 
+export { LineItem }
+
 export { LineItemSpec }
 
 // @public
@@ -484,6 +508,10 @@ export type LinkProps = EditableFieldProps<LinkProps> & React_2.AnchorHTMLAttrib
 };
 
 export { ListAllPagesOptions }
+
+export { ListFacet }
+
+export { ListFacetValue }
 
 export { ListFilterValue }
 
@@ -525,6 +553,8 @@ export { OpenGraphImageField }
 export { OpenGraphImageFieldValue }
 
 export { OptionAvailability }
+
+export { Order }
 
 export { OrderCloudService }
 
@@ -716,6 +746,67 @@ export { TextField }
 export { toLineItemSpecs }
 
 export { UnitPriceEstimate }
+
+// @public
+export function useAddToCart(): {
+    isAdding: boolean;
+    canAdd: boolean;
+    addToCart(quantity: number): Promise<{
+        ok: true;
+        result: AddLineItemResult;
+    } | {
+        ok: false;
+        reason: 'incomplete' | 'quantity';
+        quantityIssue?: {
+            code: QuantityIssueCode;
+        };
+    }>;
+};
+
+// @public
+export function useCart<TCart = CartData>(options?: UseCartOptions<TCart>): UseCartState<TCart>;
+
+// @public
+export interface UseCartOptions<TCart = CartData> {
+    enabled?: boolean;
+    select?: (data: CartData) => TCart;
+}
+
+// @public
+export interface UseCartState<TCart = CartData> {
+    // (undocumented)
+    acknowledgeCartReset(): void;
+    // (undocumented)
+    addLineItem(input: ProductLineItemDraft & {
+        Quantity: number;
+    }): Promise<AddLineItemResult>;
+    // (undocumented)
+    cart: TCart | null;
+    // (undocumented)
+    cartReset: CartReset | null;
+    // (undocumented)
+    clear(): Promise<void>;
+    // (undocumented)
+    data: CartData | null;
+    // (undocumented)
+    error: CommerceError | null;
+    // (undocumented)
+    isLoading: boolean;
+    // (undocumented)
+    isMutating: boolean;
+    // (undocumented)
+    isRefetching: boolean;
+    // (undocumented)
+    itemCount: number;
+    // (undocumented)
+    refetch(): Promise<void>;
+    // (undocumented)
+    removeLineItem(lineItemId: string): Promise<void>;
+    // (undocumented)
+    status: 'idle' | 'loading' | 'success' | 'error';
+    // (undocumented)
+    updateLineItem(lineItemId: string, quantity: number): Promise<void>;
+}
 
 // @public
 export function useCommerce(): CommerceContextValue;

@@ -7,6 +7,8 @@ export {
   useCommerce,
 } from './CommerceProvider';
 export { useShopper, UseShopperOptions, UseShopperState } from './useShopper';
+export { useCart, CartData, CartReset, UseCartOptions, UseCartState } from './useCart';
+export { useAddToCart } from './useAddToCart';
 export {
   ProductProvider,
   ProductProviderProps,
@@ -50,6 +52,8 @@ export {
   LineItemSpec,
   ListMeta,
   ListPage,
+  ListFacet,
+  ListFacetValue,
   ListOptions,
   ListProductsOptions,
   ListFilterValue,
@@ -69,6 +73,9 @@ export {
   OptionAvailability,
   ProductLineItemDraft,
   UnitPriceEstimate,
+  AddLineItemResult,
+  Order,
+  LineItem,
   isProductNotFoundError,
   hasVariantSpecs,
   getDefaultSelections,

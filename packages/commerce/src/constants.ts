@@ -42,6 +42,13 @@ export const DEFAULT_EXPIRY_BUFFER_MS = 60_000;
 export const DEFAULT_REFRESH_TOKEN_MAX_AGE = 2_592_000;
 
 /**
+ * Session marker lifetime, in seconds (365 days).
+ * The marker stores only the previous shopper type so a later visit can detect session loss.
+ * @internal
+ */
+export const DEFAULT_SESSION_MARKER_MAX_AGE = 31_536_000;
+
+/**
  * Default application endpoint used by the route-handler token client.
  * @internal
  */
@@ -58,3 +65,9 @@ export const SESSION_COOKIE_NAME = 'sc_oc_s';
  * @internal
  */
 export const REFRESH_COOKIE_NAME = 'sc_oc_rt';
+
+/**
+ * Base name of the non-secret shopper-type marker cookie.
+ * @internal
+ */
+export const SESSION_MARKER_COOKIE_NAME = 'sc_oc_seen';

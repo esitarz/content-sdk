@@ -31,6 +31,8 @@ import { ComponentParams } from '@sitecore-content-sdk/content/layout';
 import { ComponentRendering } from '@sitecore-content-sdk/content/layout';
 import { constants } from '@sitecore-content-sdk/core';
 import { createGraphQLClientFactory } from '@sitecore-content-sdk/content/client';
+import { createShopperTokenVerifier } from '@sitecore-content-sdk/commerce';
+import { createStaticTokenClient } from '@sitecore-content-sdk/commerce';
 import { CSDK_GLOBAL_EXPERIMENTAL_FEATURES_FLAG } from '@sitecore-content-sdk/content/experimental';
 import { DateField } from '@sitecore-content-sdk/react';
 import { DeepRequired } from '@sitecore-content-sdk/content/config';
@@ -151,6 +153,7 @@ import { OG_MODIFIED_TIME_TAG } from '@sitecore-content-sdk/react';
 import { OpenGraphFields } from '@sitecore-content-sdk/react';
 import { OpenGraphImageField } from '@sitecore-content-sdk/react';
 import { OpenGraphImageFieldValue } from '@sitecore-content-sdk/react';
+import { OrderCloudService } from '@sitecore-content-sdk/commerce';
 import { Page } from '@sitecore-content-sdk/content/client';
 import { PageMetadataFields } from '@sitecore-content-sdk/react';
 import type { PageMetadataRouteFields } from '@sitecore-content-sdk/content/layout';
@@ -188,6 +191,8 @@ import { RobotsQueryResult } from '@sitecore-content-sdk/content/site';
 import { RobotsService } from '@sitecore-content-sdk/content/site';
 import { RobotsServiceConfig } from '@sitecore-content-sdk/content/site';
 import { RouteData } from '@sitecore-content-sdk/content/layout';
+import { ShopperTokenVerifierConfig } from '@sitecore-content-sdk/commerce';
+import { ShopperUserType } from '@sitecore-content-sdk/commerce';
 import { SitecoreCliConfig } from '@sitecore-content-sdk/content/config';
 import { SitecoreCliConfigInput } from '@sitecore-content-sdk/content/config';
 import { SitecoreClient as SitecoreClient_2 } from '@sitecore-content-sdk/content/client';
@@ -210,6 +215,7 @@ import { StaticPath } from '@sitecore-content-sdk/content';
 import { Text as Text_2 } from '@sitecore-content-sdk/react';
 import { TextField } from '@sitecore-content-sdk/react';
 import { useSitecore } from '@sitecore-content-sdk/react';
+import { VerifiedShopperToken } from '@sitecore-content-sdk/commerce';
 import { withAppPlaceholder } from '@sitecore-content-sdk/react';
 import { withDatasourceCheck } from '@sitecore-content-sdk/react';
 import { withEditorChromes } from '@sitecore-content-sdk/react';
@@ -455,6 +461,27 @@ export const createRobotsRouteHandler: (options: RouteHandlerOptions_2) => {
 };
 
 // @public
+export function createShopperService(config: CreateShopperServiceConfig): OrderCloudService;
+
+// @public
+export interface CreateShopperServiceConfig {
+    // (undocumented)
+    accessToken: string;
+    // (undocumented)
+    contextId: string;
+    // (undocumented)
+    edgeUrl?: string;
+    // (undocumented)
+    fetch?: typeof fetch;
+    // (undocumented)
+    timeout?: number;
+    // (undocumented)
+    userType?: ShopperUserType;
+}
+
+export { createShopperTokenVerifier }
+
+// @public
 export function createSitecoreRevalidateRouteHandler(options?: SitecoreRevalidateRouteHandlerOptions): {
     POST: (req: NextRequest) => Promise<NextResponse<{
         error: string;
@@ -472,6 +499,8 @@ export function createSitecoreRevalidateRouteHandler(options?: SitecoreRevalidat
 export function createSitemapRouteHandler(options: RouteHandlerOptions): {
     GET: (req: NextRequest) => Promise<Response>;
 };
+
+export { createStaticTokenClient }
 
 export { CSDK_GLOBAL_EXPERIMENTAL_FEATURES_FLAG }
 
@@ -1065,6 +1094,9 @@ abstract class ProxyHandler_2 {
 }
 export { ProxyHandler_2 as ProxyHandler }
 
+// @public
+export function readBearerToken(request: Request): string | null;
+
 export { REDIRECT_TYPE_301 }
 
 export { REDIRECT_TYPE_302 }
@@ -1148,6 +1180,8 @@ export { RouteData }
 
 // @public
 export function setCachedPageParams(pageParams: CachedPageParams): void;
+
+export { ShopperTokenVerifierConfig }
 
 // @public
 export class SitecoreClient extends SitecoreClient_2 {
@@ -1300,6 +1334,8 @@ export { TextField }
 export function useComponentProps<ComponentData>(componentUid: string | undefined): ComponentData | undefined;
 
 export { useSitecore }
+
+export { VerifiedShopperToken }
 
 export { withAppPlaceholder }
 

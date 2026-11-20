@@ -1,4 +1,6 @@
 import { CONTEXT_ID_HEADER } from './constants';
+import { CartApi, createCartApi } from './cart/cart-api';
+import { createOrdersApi, OrdersApi } from './orders/orders-api';
 import { CommerceError } from './errors';
 import { buildProxyUrl, commerceFetch } from './http';
 import { CommerceRequestOptions, MeUser, ShopperSession } from './models';
@@ -83,6 +85,16 @@ export class OrderCloudService {
   readonly products: ProductsApi;
 
   /**
+   * Buyer cart operations.
+   */
+  readonly cart: CartApi;
+
+  /**
+   * Shopper-owned order operations.
+   */
+  readonly orders: OrdersApi;
+
+  /**
    * @param {OrderCloudServiceConfig} config service configuration
    */
   constructor(private config: OrderCloudServiceConfig) {
@@ -112,6 +124,8 @@ export class OrderCloudService {
     };
 
     this.products = createProductsApi((path, init) => this.request(path, init));
+    this.cart = createCartApi((path, init) => this.request(path, init), this.sessionManager);
+    this.orders = createOrdersApi((path, init) => this.request(path, init));
   }
 
   /**

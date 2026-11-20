@@ -12,6 +12,12 @@ export {
   RouteHandlerTokenClientConfig,
   CommerceTokenEndpointResponse,
 } from './token/route-handler-token-client';
+export { createStaticTokenClient } from './token/static-token-client';
+export {
+  createShopperTokenVerifier,
+  ShopperTokenVerifierConfig,
+  VerifiedShopperToken,
+} from './token/shopper-token-verifier';
 export { isSessionUsable, SessionUsableOptions } from './token/session-utils';
 export { CommerceTokenStore, CommerceCookieOptions } from './token-store/token-store';
 export { createMemoryTokenStore } from './token-store/memory-token-store';
@@ -24,6 +30,7 @@ export {
   CommerceErrorOptions,
   CommerceErrorSource,
   OrderCloudApiError,
+  isOrderCloudError,
 } from './errors';
 export {
   ShopperSession,
@@ -40,6 +47,8 @@ export {
   LineItemSpec,
   ListMeta,
   ListPage,
+  ListFacet,
+  ListFacetValue,
   PriceBreak,
   PriceMarkupType,
   PriceSchedule,
@@ -47,6 +56,13 @@ export {
   SpecOption,
   Variant,
   VariantSpec,
+  Address,
+  OrderDirection,
+  OrderStatus,
+  LineItemProduct,
+  LineItemVariant,
+  LineItem,
+  Order,
 } from './ordercloud-types';
 export { ListOptions, ListProductsOptions, ListFilterValue } from './query';
 export { ProductsApi, ListAllPagesOptions } from './products/products-api';
@@ -67,3 +83,6 @@ export {
   toLineItemSpecs,
 } from './products/product-options';
 export { estimateUnitPrice, UnitPriceEstimate } from './products/pricing';
+export { QuantityIssueCode, validateQuantity } from './products/quantity';
+export { AddLineItemOptions, AddLineItemResult, CartApi } from './cart/cart-api';
+export { OrdersApi } from './orders/orders-api';

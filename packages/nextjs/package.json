@@ -178,6 +178,11 @@
       "import": "./dist/esm/commerce/index.js",
       "require": "./dist/cjs/commerce/index.js"
     },
+    "./commerce/server": {
+      "types": "./types/commerce/server.d.ts",
+      "import": "./dist/esm/commerce/server.js",
+      "require": "./dist/cjs/commerce/server.js"
+    },
     "./site": {
       "types": "./types/site/index.d.ts",
       "import": "./dist/esm/site/index.js",

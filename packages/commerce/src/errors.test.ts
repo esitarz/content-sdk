@@ -1,5 +1,11 @@
 import { expect } from 'chai';
-import { CommerceError, isAbortError, isAuthFailure, toCommerceError } from './errors';
+import {
+  CommerceError,
+  isAbortError,
+  isAuthFailure,
+  isOrderCloudError,
+  toCommerceError,
+} from './errors';
 
 const httpError = (status: number, data?: unknown) => ({
   name: 'Error',
@@ -111,6 +117,24 @@ describe('errors', () => {
       expect(isAbortError(abort)).to.equal(true);
       expect(isAbortError(new Error('x'))).to.equal(false);
       expect(isAbortError(undefined)).to.equal(false);
+    });
+  });
+
+  describe('isOrderCloudError', () => {
+    it('matches source, status and any OrderCloud error code', () => {
+      const error = new CommerceError('Conflict', {
+        source: 'ordercloud',
+        status: 409,
+        errors: [{ ErrorCode: 'IdExists', Message: 'Object already exists.' }],
+      });
+
+      expect(isOrderCloudError(error)).to.equal(true);
+      expect(isOrderCloudError(error, { status: 409, code: 'IdExists' })).to.equal(true);
+      expect(isOrderCloudError(error, { status: 404 })).to.equal(false);
+      expect(isOrderCloudError(error, { code: 'Other' })).to.equal(false);
+      expect(
+        isOrderCloudError(new CommerceError('Proxy', { source: 'proxy', status: 409 }))
+      ).to.equal(false);
     });
   });
 });

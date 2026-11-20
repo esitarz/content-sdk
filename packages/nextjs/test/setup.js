@@ -1,4 +1,9 @@
 const Module = require('module');
+const originalLoad = Module._load;
+Module._load = function (request, parent, isMain) {
+  if (request === 'server-only') return {};
+  return originalLoad.call(this, request, parent, isMain);
+};
 
 // Ensure a single React instance when tests load @sitecore-content-sdk/react.
 // That package may otherwise resolve its own nested react and break hooks (e.g. useMemo).

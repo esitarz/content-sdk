@@ -1,5 +1,9 @@
-import { DEFAULT_REFRESH_TOKEN_MAX_AGE, DEFAULT_TOKEN_KEY } from '../constants';
-import { ShopperSession, TokenKey } from '../models';
+import {
+  DEFAULT_REFRESH_TOKEN_MAX_AGE,
+  DEFAULT_SESSION_MARKER_MAX_AGE,
+  DEFAULT_TOKEN_KEY,
+} from '../constants';
+import { ShopperSession, ShopperUserType, TokenKey } from '../models';
 import { decodeSessionCookie, encodeSessionCookie, getCommerceCookieNames } from './cookie-codec';
 import {
   CommerceCookieOptions,
@@ -99,8 +103,15 @@ export function createCookieTokenStore(
   };
 
   const clearKey = (key: TokenKey) => {
-    adapter.delete(getCommerceCookieNames(key).session, base);
+    const names = getCommerceCookieNames(key);
+    adapter.delete(names.session, base);
+    adapter.delete(names.marker, base);
     deleteRefreshToken(key);
+  };
+
+  const readMarker = (key: TokenKey): ShopperUserType | null => {
+    const value = adapter.get(getCommerceCookieNames(key).marker);
+    return value === 'anonymous' || value === 'registered' ? value : null;
   };
 
   return {
@@ -109,8 +120,12 @@ export function createCookieTokenStore(
       const refreshToken = readRefreshToken(key);
 
       if (!session) {
-        return refreshToken
-          ? { accessToken: '', expiresAt: 0, userType: 'registered', refreshToken }
+        if (refreshToken) {
+          return { accessToken: '', expiresAt: 0, userType: 'registered', refreshToken };
+        }
+        const markedUserType = readMarker(key);
+        return markedUserType
+          ? { accessToken: '', expiresAt: 0, userType: markedUserType }
           : null;
       }
 
@@ -126,6 +141,11 @@ export function createCookieTokenStore(
         ...base,
         httpOnly: false,
         maxAge,
+      });
+      adapter.set(getCommerceCookieNames(key).marker, session.userType, {
+        ...base,
+        httpOnly: false,
+        maxAge: DEFAULT_SESSION_MARKER_MAX_AGE,
       });
 
       if (session.userType === 'anonymous') {

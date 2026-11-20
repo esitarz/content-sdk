@@ -39,6 +39,50 @@ Pure helpers implement OrderCloud spec and variant rules and work anywhere (serv
 
 In React, use `ProductProvider` with `useProduct`, `useProductOptions` and `useProductSelection` from `@sitecore-content-sdk/react/commerce` (or `@sitecore-content-sdk/nextjs/commerce`) for a single product, `useProducts(params)` for a page of products, and `useInfiniteProducts(params)` for infinite scroll. Pass `timeout` to `CommerceProvider` to bound every commerce request.
 
+## Cart and orders
+
+`service.cart` wraps the shopper cart, line items and submit operation. Add-to-cart uses a
+client-generated line-item ID so an ambiguous retry can be resolved without creating duplicates:
+
+```ts
+const result = await service.cart.addLineItem({
+  ProductID: product.ID,
+  Quantity: 1,
+  Specs: [],
+});
+
+const cart = await service.cart.get();
+const order = await service.orders.get(submittedOrderId);
+```
+
+The cart API never deletes a cart to recover from a 409. It reads back the line item, retries when a
+concurrent first add created the cart, or renews only a spent anonymous session. `validateQuantity`
+returns localization-safe issue codes for product minimums, restricted quantities and multipliers.
+
+In React, `useCart()` shares one cart and serializes mutations across consumers. `useAddToCart()` layers
+product selection and quantity validation over the shared cart. Cart mutations reject in editing,
+preview and Design Library modes.
+
+Server routes can use `@sitecore-content-sdk/nextjs/commerce/server`:
+
+```ts
+import {
+  createShopperService,
+  createShopperTokenVerifier,
+  readBearerToken,
+} from '@sitecore-content-sdk/nextjs/commerce/server';
+
+const token = readBearerToken(request);
+const service = createShopperService({
+  contextId: serverContextId,
+  accessToken: token!,
+});
+```
+
+The server shopper service never refreshes or replaces the supplied token. Use the token verifier
+with keys from the configured commerce proxy and an allowlist of buyer client IDs before trusting
+claims for business decisions.
+
 ## Storage patterns
 
 | Pattern | Token client | Refresh token | Use when |
@@ -48,7 +92,7 @@ In React, use `ProductProvider` with `useProduct`, `useProductOptions` and `useP
 | Browser, cookie | `EdgeTokenClient` + `createBrowserCookieTokenStore({ refreshTokenStorage: 'cookie' })` | JS-readable cookie (exposed to XSS) | Explicit opt-in only |
 | In-memory | `EdgeTokenClient` + `createMemoryTokenStore()` | Memory | Server code, editing/preview, tests |
 
-Tokens are never stored in `localStorage` or `sessionStorage`. The access-token session cookie (`sc_oc_s`) is readable by the browser and expires with the token; the refresh token cookie (`sc_oc_rt`) is only written for registered sessions.
+Tokens are never stored in `localStorage` or `sessionStorage`. The access-token session cookie (`sc_oc_s`) is readable by the browser and expires with the token; the refresh token cookie (`sc_oc_rt`) is only written for registered sessions. A non-secret `sc_oc_seen` marker stores only the last shopper type so a later visit can distinguish an expired/lost cart from a first visit. Explicit token-store clears remove the marker.
 
 ## Buyer API client provisioning
 

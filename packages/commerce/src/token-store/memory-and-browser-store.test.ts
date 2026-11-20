@@ -109,15 +109,16 @@ describe('browser cookie store', () => {
     it('should default to not storing refresh tokens', () => {
       const store = createBrowserCookieTokenStore();
       store.set('default', { ...session, userType: 'registered', refreshToken: 'rt' });
-      expect(writes).to.have.length(1);
+      expect(writes).to.have.length(2);
       expect(writes[0].startsWith('sc_oc_s=v1.')).to.equal(true);
+      expect(writes[1].startsWith('sc_oc_seen=registered;')).to.equal(true);
       expect(writes.join()).not.to.include('rt;');
     });
 
     it('should store a JS-readable refresh cookie when opted in', () => {
       const store = createBrowserCookieTokenStore({ refreshTokenStorage: 'cookie' });
       store.set('default', { ...session, userType: 'registered', refreshToken: 'rt' });
-      expect(writes[1].startsWith('sc_oc_rt=rt;')).to.equal(true);
+      expect(writes[2].startsWith('sc_oc_rt=rt;')).to.equal(true);
     });
 
     it('should never use localStorage or sessionStorage', () => {
